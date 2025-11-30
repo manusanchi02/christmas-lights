@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.5/font/bootstrap-icons.min.css" rel="stylesheet">
+    <title>Controllo Luci Natale</title>
+    <style>
+        .shutdown-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Controllo Luci Natale</h1>
+        <p>Stato luci: 
+            {{ 'Fisse' if mode|string == 'Mode.FIXED' else 'Fade' if mode|string == 'Mode.FADE' else 'Show' if mode|string == 'Mode.SHOW' else 'Sconosciuto' }}
+        </p>
+        
+        <div class="row mb-3">
+            <div class="col-4">
+                <form method="post" action="/toggle_fade">
+                    <button type="submit" class="btn btn-primary w-100">Fade</button>
+                </form>
+            </div>
+            <div class="col-4">
+                <form method="post" action="/toggle_fixed">
+                    <button type="submit" class="btn btn-success w-100">Fisse</button>
+                </form>
+            </div>
+            <div class="col-4">
+                <form method="post" action="/toggle_show">
+                    <button type="submit" class="btn btn-warning w-100">Show</button>
+                </form>
+            </div>
+        </div>
+        <form method="post" action="/shutdown" class="shutdown-button">
+            <button type="submit" class="btn btn-danger">
+                <i class="bi bi-power"></i> Spegni
+            </button>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.5/font/bootstrap-icons.min.js"></script>
+</body>
+</html>
