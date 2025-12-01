@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for
 from gpiozero import PWMLED
+import RPi.GPIO as GPIO
 from time import sleep
 import threading
 from enum import Enum

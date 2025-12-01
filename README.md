@@ -147,7 +147,7 @@ In the `app.py` file, modify the variable:
 ledPin = 21  # Change to desired pin
 ```
 
-**⚠️ Warning**: GPIO 21 is used because it supports hardware PWM. Changing to a non-PWM pin may result in flickering or poor performance. Raspberry Pi hardware PWM pins are: GPIO 12, 13, 18, and 19.
+**⚠️ Warning**: GPIO 21 is used because it supports hardware PWM. Changing to a non-PWM pin may result in flickering or poor performance. Raspberry Pi hardware PWM pins are: GPIO 12, 13, 18, and 19. See [GPIO scheme](https://pinout.xyz/#)
 
 ### Customizing Effects
 
