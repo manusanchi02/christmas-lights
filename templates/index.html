@@ -18,7 +18,7 @@
     <div class="container mt-5">
         <h1>Christmas Lights</h1>
         <p>State: 
-            {{ 'Fisse' if mode|string == 'Mode.FIXED' else 'Fade' if mode|string == 'Mode.FADE' else 'Show' if mode|string == 'Mode.SHOW' elif mode|string == 'Mode.MORSE' else 'Undefined' }}
+            {{ 'Fixed' if mode|string == 'Mode.FIXED' else 'Fade' if mode|string == 'Mode.FADE' else 'Show' if mode|string == 'Mode.SHOW' else 'Morse 'if mode|string == 'Mode.MORSE' else 'Undefined' }}
         </p>
         
         <div class="row mb-3">
@@ -44,7 +44,7 @@
         </div>
         <form method="post" action="/shutdown" class="shutdown-button">
             <button type="submit" class="btn btn-danger">
-                <i class="bi bi-power"></i> Spegni
+                <i class="bi bi-power"></i> Shutdown
             </button>
         </form>
     </div>
