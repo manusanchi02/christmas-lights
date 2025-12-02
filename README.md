@@ -36,13 +36,17 @@ Lights transmit the message "MERRY CHRISTMAS" in Morse code, using:
 - Dashes (long signals) of 0.6 seconds
 - Pauses between letters and words according to Morse standard
 
-### 🎵 Music Player (NEW!)
-Upload an MP3 file and the system will:
-1. Convert the audio to MIDI using BasicPitch AI (optimized for melody extraction)
-2. Extract musical notes and frequencies from the MIDI file
-3. Play the melody through a passive buzzer connected to GPIO18
+### 🎵 Music Player
+Select from pre-loaded Christmas songs that will:
+1. Play the melody through a passive buzzer connected to GPIO18
+2. **Automatically synchronize the Christmas lights with the music**
+3. Adjust brightness based on note intensity
 
-**Note**: The conversion focuses on melody extraction, filtering out vocals and isolating the main musical line.
+**Available songs**:
+- Jingle Bells
+- Last Christmas
+- We Wish You a Merry Christmas
+- It's Beginning to Look a Lot Like Christmas
 
 ## 🔧 Required Hardware
 
@@ -75,9 +79,7 @@ The complete circuit is available in the `docs/` folder both in Fritzing format 
 - **gpiozero**: Library for Raspberry Pi GPIO control
 - **Bootstrap 5**: CSS framework for responsive interface
 - **Threading**: For parallel management of web server and LED control
-- **BasicPitch**: AI model for audio to MIDI conversion
 - **Mido**: MIDI file processing library
-- **TensorFlow**: Deep learning framework (required by BasicPitch)
 
 ## 🚀 Installation
 
@@ -89,9 +91,6 @@ sudo apt update && sudo apt upgrade -y
 
 # Install Python and pip if not already present
 sudo apt install python3 python3-pip -y
-
-# Install system dependencies for audio processing
-sudo apt install libsndfile1 ffmpeg -y
 ```
 
 ### Install Dependencies
@@ -104,8 +103,6 @@ cd christmas-lights
 # Install all required Python libraries from requirements.txt
 pip3 install -r requirements.txt
 ```
-
-**Note**: The installation of TensorFlow and BasicPitch may take some time on a Raspberry Pi.
 
 ### Setup
 
@@ -129,25 +126,23 @@ The application will be accessible from:
 The interface features:
 - Current light status indicator
 - Mode selection buttons (Fade, Fixed, Show, Morse)
-- **MP3 upload form** for music playback on the buzzer
+- **MIDI upload form** for music playback on the buzzer
 - Shutdown button to power off the system
 
 ### Using the Music Player
 
 1. Access the web interface at `http://[RASPBERRY-PI-IP]:5000`
 2. Scroll to the "Riproduci Melodia" section
-3. Click "Choose File" and select an MP3 file from your device
-4. Click "Converti e Riproduci sul Buzzer"
-5. The system will:
-   - Convert the MP3 to MIDI using AI (BasicPitch)
-   - Extract the melody notes
-   - Play the frequencies through the passive buzzer on GPIO18
+3. Select a song from the dropdown menu
+4. Click "Riproduci con Luci Sincronizzate"
+5. The melody will play on the buzzer while the lights synchronize with the music!
+6. Click "Ferma Musica" to stop playback at any time
 
-**Tips for best results**:
-- Use MP3 files with clear melodies
-- Instrumental tracks work better than vocal-heavy songs
-- The conversion focuses on extracting the main melody line
-- Processing time depends on file length and Raspberry Pi model
+**Light synchronization**:
+- Lights brightness follows note intensity
+- Higher notes create brighter flashes
+- Lights dim during pauses
+- Creates a dynamic light show matching the music rhythm
 
 ### iOS Shortcut for Quick Launch
 
@@ -191,14 +186,15 @@ buzzerPin = 18  # Change to desired pin for buzzer
 
 ### Tuning Music Playback
 
-You can adjust the music conversion parameters in the `mp3_to_midi_and_play()` function:
+You can adjust the playback speed in the `midi_play()` function:
 
 ```python
-onset_threshold=0.5,      # Lower = more sensitive to note onsets (0.0-1.0)
-frame_threshold=0.3,      # Lower = keeps weaker notes (0.0-1.0)
-minimum_note_length=100,  # Minimum note duration in milliseconds
-melodia_trick=True,       # Keep True for melody extraction
+time_in_seconds = msg.time / midi.ticks_per_beat * 0.5  # 0.5 = normal speed
 ```
+
+- `0.25` = 2x faster
+- `0.5` = normal speed  
+- `1.0` = 2x slower
 
 ### Customizing Effects
 
@@ -220,6 +216,11 @@ morse_code = "MERRY CHRISTMAS"  # Customize your message
 christmas-lights/
 ├── app.py                 # Main Flask application
 ├── requirements.txt       # Python dependencies
+├── music/                 # Pre-loaded MIDI songs
+│   ├── jingle-bells.mid
+│   ├── last-christmas.mid
+│   ├── we-wish-you-a-merry-christmas.MID
+│   └── its-beginning-to-look-a-lot-like-christmas.mid
 ├── templates/
 │   └── index.html        # Web interface
 ├── static/
@@ -231,17 +232,26 @@ christmas-lights/
 └── README.md
 ```
 
-## ⚙️ How It Works: MP3 to Buzzer
+## 🎶 Adding More Songs
 
-1. **Upload**: User uploads an MP3 file through the web interface
-2. **AI Conversion**: BasicPitch (Spotify's AI model) analyzes the audio and converts it to MIDI
-   - Uses deep learning to detect pitch and timing
-   - `melodia_trick=True` optimizes for melody extraction, filtering out vocals
-3. **MIDI Processing**: Mido reads the MIDI file and extracts note events
-4. **Frequency Calculation**: Each MIDI note number is converted to its frequency in Hz
+To add more songs to your collection:
+
+1. Download MIDI files from sites like [MIDIWorld](https://www.midiworld.com/) or [FreeMIDI](https://freemidi.org/)
+2. Copy the `.mid` or `.midi` files to the `music/` folder
+3. Restart the application
+4. The new songs will appear automatically in the dropdown menu
+
+## ⚚️ How It Works: Music & Light Synchronization
+
+1. **Song Selection**: User selects a pre-loaded MIDI file from the dropdown
+2. **MIDI Processing**: Mido reads the MIDI file and extracts note events, timing, and velocity
+3. **Frequency Calculation**: Each MIDI note number is converted to its frequency in Hz
    - Formula: `f = 440 × 2^((n-69)/12)` where n is the MIDI note number
-5. **Buzzer Playback**: GPIO18 is toggled at the calculated frequency to produce the tone
-   - The passive buzzer vibrates at the specified frequency, creating sound
+4. **Buzzer Playback**: GPIO18 is toggled at the calculated frequency to produce the tone
+5. **Light Synchronization**: PWM LED brightness is adjusted based on:
+   - Note velocity (how hard the note is played) = brightness intensity
+   - Active notes = lights on, pauses = lights dim
+   - Creates a dynamic visual effect matching the music rhythm
 
 ## 🔒 Security
 
