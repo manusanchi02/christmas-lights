@@ -25,7 +25,7 @@
                 <button type="submit" class="btn {{ 'btn-primary' if mode|string == 'Mode.FADE' else 'btn-secondary' }} w-100">Fade</button>
             </form>
             <form method="post" action="/toggle_fixed">
-                <button type="submit" class="btn {{ 'btn-primary' if mode|string == 'Mode.FIXED' else 'btn-secondary' }} w-100">Fisse</button>
+                <button type="submit" class="btn {{ 'btn-primary' if mode|string == 'Mode.FIXED' else 'btn-secondary' }} w-100">Fixed</button>
             </form>
             <form method="post" action="/toggle_show">
                 <button type="submit" class="btn {{ 'btn-primary' if mode|string == 'Mode.SHOW' else 'btn-secondary' }} w-100">Show</button>
@@ -33,39 +33,21 @@
             <form method="post" action="/toggle_morse">
                 <button type="submit" class="btn {{ 'btn-primary' if mode|string == 'Mode.MORSE' else 'btn-secondary' }} w-100">Morse</button>
             </form>
-        </div>
-
-        <!-- Sezione per riprodurre canzoni precaricate -->
-        <div class="mt-5">
-            <h3 class="mb-3"><i class="bi bi-music-note-beamed"></i> Riproduci Melodia</h3>
-            <form method="post" action="/play_song">
-                <div class="mb-3">
-                    <label for="song" class="form-label">Scegli una canzone:</label>
-                    <select class="form-select" id="song" name="song" required>
-                        <option value="" selected disabled>Seleziona una canzone...</option>
-                        {% for song in songs %}
-                        <option value="{{ song.filename }}">{{ song.display_name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="d-grid gap-2">
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-play-circle"></i> Riproduci con Luci Sincronizzate
-                    </button>
-                </div>
-            </form>
             
-            {% if mode|string == 'Mode.MUSIC' %}
-            <form method="post" action="/stop_music" class="mt-3">
-                <button type="submit" class="btn btn-danger w-100">
-                    <i class="bi bi-stop-circle"></i> Ferma Musica
+            <!-- Music Mode -->
+            <form method="post" action="/toggle_music" class="position-relative">
+                <select class="form-select mb-2" name="song" required>
+                    <option value="" disabled {{ 'selected' if not current_song else '' }}>Select a song...</option>
+                    {% for song in songs %}
+                    <option value="{{ song.filename }}" {{ 'selected' if current_song == song.filename else '' }}>
+                        {{ song.display_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn {{ 'btn-primary' if mode|string == 'Mode.MUSIC' else 'btn-secondary' }} w-100">
+                    <i class="bi bi-music-note-beamed"></i> Music
                 </button>
             </form>
-            {% endif %}
-            
-            <p class="text-muted mt-2 small">
-                Le luci si sincronizzeranno automaticamente con la melodia riprodotta sul buzzer.
-            </p>
         </div>
     </div>
 
