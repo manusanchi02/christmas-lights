@@ -36,14 +36,28 @@ Lights transmit the message "MERRY CHRISTMAS" in Morse code, using:
 - Dashes (long signals) of 0.6 seconds
 - Pauses between letters and words according to Morse standard
 
+### 🎵 Music Player (NEW!)
+Upload an MP3 file and the system will:
+1. Convert the audio to MIDI using BasicPitch AI (optimized for melody extraction)
+2. Extract musical notes and frequencies from the MIDI file
+3. Play the melody through a passive buzzer connected to GPIO18
+
+**Note**: The conversion focuses on melody extraction, filtering out vocals and isolating the main musical line.
+
 ## 🔧 Required Hardware
 
 - Raspberry Pi (any model with GPIO)
 - Christmas lights or LED strip
+- **Passive buzzer** (for music playback)
 - Appropriate resistors
 - Power supply for the lights (if needed)
 - Connecting wires
 - Transistor or LED driver (e.g., MOSFET) - only if required by your specific lights
+
+### Pin Configuration
+
+- **GPIO21**: LED/Christmas lights control (PWM)
+- **GPIO18**: Passive buzzer for music playback
 
 ### Circuit Scheme
 
@@ -61,6 +75,9 @@ The complete circuit is available in the `docs/` folder both in Fritzing format 
 - **gpiozero**: Library for Raspberry Pi GPIO control
 - **Bootstrap 5**: CSS framework for responsive interface
 - **Threading**: For parallel management of web server and LED control
+- **BasicPitch**: AI model for audio to MIDI conversion
+- **Mido**: MIDI file processing library
+- **TensorFlow**: Deep learning framework (required by BasicPitch)
 
 ## 🚀 Installation
 
@@ -72,24 +89,28 @@ sudo apt update && sudo apt upgrade -y
 
 # Install Python and pip if not already present
 sudo apt install python3 python3-pip -y
+
+# Install system dependencies for audio processing
+sudo apt install libsndfile1 ffmpeg -y
 ```
 
 ### Install Dependencies
 
 ```bash
-# Install required Python libraries
-pip3 install flask gpiozero
+# Clone the repository
+git clone https://github.com/manusanchi02/christmas-lights.git
+cd christmas-lights
+
+# Install all required Python libraries from requirements.txt
+pip3 install -r requirements.txt
 ```
+
+**Note**: The installation of TensorFlow and BasicPitch may take some time on a Raspberry Pi.
 
 ### Setup
 
-1. Clone the repository:
-```bash
-git clone https://github.com/manusanchi02/christmas-lights.git
-cd christmas-lights
-```
-
-2. Make sure your lights are correctly connected to GPIO 21 through an appropriate driver circuit
+1. Make sure your lights are correctly connected to **GPIO 21** through an appropriate driver circuit
+2. Connect the passive buzzer to **GPIO 18** (positive terminal to GPIO18, negative to GND)
 
 ## 📱 Usage
 
@@ -107,8 +128,26 @@ The application will be accessible from:
 
 The interface features:
 - Current light status indicator
-- Three buttons to select modes (Fade, Fixed, Show)
+- Mode selection buttons (Fade, Fixed, Show, Morse)
+- **MP3 upload form** for music playback on the buzzer
 - Shutdown button to power off the system
+
+### Using the Music Player
+
+1. Access the web interface at `http://[RASPBERRY-PI-IP]:5000`
+2. Scroll to the "Riproduci Melodia" section
+3. Click "Choose File" and select an MP3 file from your device
+4. Click "Converti e Riproduci sul Buzzer"
+5. The system will:
+   - Convert the MP3 to MIDI using AI (BasicPitch)
+   - Extract the melody notes
+   - Play the frequencies through the passive buzzer on GPIO18
+
+**Tips for best results**:
+- Use MP3 files with clear melodies
+- Instrumental tracks work better than vocal-heavy songs
+- The conversion focuses on extracting the main melody line
+- Processing time depends on file length and Raspberry Pi model
 
 ### iOS Shortcut for Quick Launch
 
@@ -140,14 +179,26 @@ curl -X POST http://[RASPBERRY-PI-IP]:5000/toggle_fade
 
 ## 🛠️ Advanced Configuration
 
-### Changing GPIO Pin
+### Changing GPIO Pins
 
-In the `app.py` file, modify the variable:
+In the `app.py` file, modify the variables:
 ```python
-ledPin = 21  # Change to desired pin
+ledPin = 21     # Change to desired pin for lights
+buzzerPin = 18  # Change to desired pin for buzzer
 ```
 
 **⚠️ Warning**: GPIO 21 is used because it supports hardware PWM. Changing to a non-PWM pin may result in flickering or poor performance. Raspberry Pi hardware PWM pins are: GPIO 12, 13, 18, and 19. See [GPIO scheme](https://pinout.xyz/#)
+
+### Tuning Music Playback
+
+You can adjust the music conversion parameters in the `mp3_to_midi_and_play()` function:
+
+```python
+onset_threshold=0.5,      # Lower = more sensitive to note onsets (0.0-1.0)
+frame_threshold=0.3,      # Lower = keeps weaker notes (0.0-1.0)
+minimum_note_length=100,  # Minimum note duration in milliseconds
+melodia_trick=True,       # Keep True for melody extraction
+```
 
 ### Customizing Effects
 
@@ -168,6 +219,7 @@ morse_code = "MERRY CHRISTMAS"  # Customize your message
 ```
 christmas-lights/
 ├── app.py                 # Main Flask application
+├── requirements.txt       # Python dependencies
 ├── templates/
 │   └── index.html        # Web interface
 ├── static/
@@ -178,6 +230,18 @@ christmas-lights/
 ├── LICENSE
 └── README.md
 ```
+
+## ⚙️ How It Works: MP3 to Buzzer
+
+1. **Upload**: User uploads an MP3 file through the web interface
+2. **AI Conversion**: BasicPitch (Spotify's AI model) analyzes the audio and converts it to MIDI
+   - Uses deep learning to detect pitch and timing
+   - `melodia_trick=True` optimizes for melody extraction, filtering out vocals
+3. **MIDI Processing**: Mido reads the MIDI file and extracts note events
+4. **Frequency Calculation**: Each MIDI note number is converted to its frequency in Hz
+   - Formula: `f = 440 × 2^((n-69)/12)` where n is the MIDI note number
+5. **Buzzer Playback**: GPIO18 is toggled at the calculated frequency to produce the tone
+   - The passive buzzer vibrates at the specified frequency, creating sound
 
 ## 🔒 Security
 

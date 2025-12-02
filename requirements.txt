@@ -1,0 +1,5 @@
+Flask
+gpiozero
+RPi.GPIO
+basic-pitch
+mido
