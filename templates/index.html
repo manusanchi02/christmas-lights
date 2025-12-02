@@ -35,20 +35,36 @@
             </form>
         </div>
 
-        <!-- Sezione per caricare e riprodurre file MP3 -->
+        <!-- Sezione per riprodurre canzoni precaricate -->
         <div class="mt-5">
             <h3 class="mb-3"><i class="bi bi-music-note-beamed"></i> Riproduci Melodia</h3>
-            <form method="post" action="/play_mp3" enctype="multipart/form-data">
+            <form method="post" action="/play_song">
                 <div class="mb-3">
-                    <label for="mp3_file" class="form-label">Carica un file MP3:</label>
-                    <input type="file" class="form-control" id="mp3_file" name="mp3_file" accept=".mp3" required>
+                    <label for="song" class="form-label">Scegli una canzone:</label>
+                    <select class="form-select" id="song" name="song" required>
+                        <option value="" selected disabled>Seleziona una canzone...</option>
+                        {% for song in songs %}
+                        <option value="{{ song.filename }}">{{ song.display_name }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
-                <button type="submit" class="btn btn-success w-100">
-                    <i class="bi bi-play-circle"></i> Converti e Riproduci sul Buzzer
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-play-circle"></i> Riproduci con Luci Sincronizzate
+                    </button>
+                </div>
+            </form>
+            
+            {% if mode|string == 'Mode.MUSIC' %}
+            <form method="post" action="/stop_music" class="mt-3">
+                <button type="submit" class="btn btn-danger w-100">
+                    <i class="bi bi-stop-circle"></i> Ferma Musica
                 </button>
             </form>
+            {% endif %}
+            
             <p class="text-muted mt-2 small">
-                Il file MP3 verrà convertito in MIDI (solo melodia) e riprodotto sul buzzer passivo.
+                Le luci si sincronizzeranno automaticamente con la melodia riprodotta sul buzzer.
             </p>
         </div>
     </div>

@@ -5,11 +5,7 @@ from time import sleep
 import threading
 from enum import Enum
 import os
-import tempfile
-from basic_pitch.inference import predict
-from basic_pitch import ICASSP_2022_MODEL_PATH
 from mido import MidiFile
-import numpy as np
 
 
 class Mode(Enum):
@@ -17,9 +13,15 @@ class Mode(Enum):
     FADE = 1
     SHOW = 2
     MORSE = 3
+    MUSIC = 4
 
 
 mode = Mode.FIXED
+music_playing = False
+music_stop_flag = False
+
+# Directory per i file MIDI
+MUSIC_DIR = os.path.join(os.path.dirname(__file__), 'music')
 
 # Led config
 GPIO.setmode(GPIO.BCM)
@@ -57,7 +59,24 @@ def shutdown():
 @app.route('/')
 def index():
     global mode
-    return render_template('index.html', mode=mode)
+    # Ottieni la lista delle canzoni disponibili
+    songs = get_available_songs()
+    return render_template('index.html', mode=mode, songs=songs)
+
+
+def get_available_songs():
+    """Restituisce la lista dei file MIDI disponibili nella cartella music"""
+    songs = []
+    if os.path.exists(MUSIC_DIR):
+        for filename in os.listdir(MUSIC_DIR):
+            if filename.lower().endswith(('.mid', '.midi')):
+                # Formatta il nome per la visualizzazione
+                display_name = filename.rsplit('.', 1)[0].replace('-', ' ').title()
+                songs.append({
+                    'filename': filename,
+                    'display_name': display_name
+                })
+    return sorted(songs, key=lambda x: x['display_name'])
 
 
 @app.route('/toggle_fade', methods=['POST'])
@@ -88,42 +107,61 @@ def toggle_morse():
     return redirect(url_for('index', mode=mode))
 
 
-@app.route('/play_mp3', methods=['POST'])
-def play_mp3():
+@app.route('/play_song', methods=['POST'])
+def play_song():
     """
-    Endpoint per caricare un file MP3, convertirlo in MIDI e riprodurlo sul buzzer
+    Endpoint per riprodurre una canzone precaricata
     """
-    if 'mp3_file' not in request.files:
-        return 'Nessun file caricato', 400
+    global mode, music_stop_flag
     
-    file = request.files['mp3_file']
+    song_filename = request.form.get('song')
+    if not song_filename:
+        return 'Nessuna canzone selezionata', 400
     
-    if file.filename == '':
-        return 'Nessun file selezionato', 400
+    song_path = os.path.join(MUSIC_DIR, song_filename)
     
-    if file and file.filename.endswith('.mp3'):
-        # Salva temporaneamente il file MP3
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as temp_file:
-            temp_file_path = temp_file.name
-            file.save(temp_file_path)
-        
-        # Avvia la conversione e riproduzione in un thread separato
-        play_thread = threading.Thread(
-            target=lambda: [mp3_to_midi_and_play(temp_file_path), os.unlink(temp_file_path)],
-            daemon=True
-        )
-        play_thread.start()
-        
-        return redirect(url_for('index'))
+    if not os.path.exists(song_path):
+        return 'Canzone non trovata', 404
     
-    return 'Formato file non valido. Usa un file MP3.', 400
+    # Ferma musica precedente se in esecuzione
+    music_stop_flag = True
+    sleep(0.5)
+    music_stop_flag = False
+    
+    # Imposta la modalità MUSIC
+    mode = Mode.MUSIC
+    
+    # Avvia la riproduzione in un thread separato
+    play_thread = threading.Thread(
+        target=lambda: midi_play_with_lights(song_path),
+        daemon=True
+    )
+    play_thread.start()
+    
+    return redirect(url_for('index'))
+
+
+@app.route('/stop_music', methods=['POST'])
+def stop_music():
+    """
+    Ferma la riproduzione musicale
+    """
+    global music_stop_flag, mode
+    music_stop_flag = True
+    mode = Mode.FIXED
+    return redirect(url_for('index'))
 
 
 def control_led():
-    global mode
+    global mode, music_playing
     try:
         while True:
-            if mode == Mode.FIXED:
+            if mode == Mode.MUSIC:
+                # In modalità musica, le luci sono controllate dalla funzione di riproduzione
+                if not music_playing:
+                    pwm_led.value = 0
+                sleep(0.1)
+            elif mode == Mode.FIXED:
                 pwm_led.value = 1
             elif mode == Mode.FADE:
                 for val in range(1, 11):
@@ -199,76 +237,75 @@ def play_frequency(frequency, duration):
         sleep(half_period)
 
 
-def mp3_to_midi_and_play(mp3_file_path):
+def midi_play_with_lights(midi_file_path):
     """
-    Converte un file MP3 in MIDI usando BasicPitch e riproduce le frequenze
-    sul buzzer passivo.
+    Riproduce un file MIDI sul buzzer passivo e sincronizza le luci.
     
     Args:
-        mp3_file_path: percorso del file MP3 da convertire
+        midi_file_path: percorso del file MIDI da riprodurre
     """
+    global music_playing, music_stop_flag
+    
     try:
-        print(f"Conversione di {mp3_file_path} in MIDI...")
+        music_playing = True
+        print(f"Caricamento di {midi_file_path}...")
         
-        # Crea una directory temporanea per i file MIDI
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # Usa BasicPitch per convertire MP3 in MIDI
-            # onset_threshold e frame_threshold sono ottimizzati per la melodia
-            model_output, midi_data, note_events = predict(
-                mp3_file_path,
-                ICASSP_2022_MODEL_PATH,
-                onset_threshold=0.5,  # Soglia per rilevare l'inizio delle note
-                frame_threshold=0.3,   # Soglia per mantenere le note
-                minimum_note_length=100,  # Lunghezza minima nota in ms
-                minimum_frequency=None,
-                maximum_frequency=None,
-                multiple_pitch_bends=False,
-                melodia_trick=True,  # Importante: ottimizza per la melodia
-                debug_file=None,
-            )
-            
-            # Salva il MIDI in un file temporaneo
-            midi_file_path = os.path.join(temp_dir, "output.mid")
-            midi_data.write(midi_file_path)
-            print(f"MIDI salvato temporaneamente in {midi_file_path}")
-            
-            # Leggi il file MIDI
-            midi = MidiFile(midi_file_path)
-            
-            print("Riproduzione delle note sul buzzer...")
-            
-            # Itera attraverso tutte le tracce e messaggi MIDI
-            for track in midi.tracks:
-                time_elapsed = 0
+        # Leggi il file MIDI
+        midi = MidiFile(midi_file_path)
+        
+        print("Riproduzione con sincronizzazione luci...")
+        
+        active_notes = set()  # Traccia le note attive
+        
+        # Itera attraverso tutte le tracce e messaggi MIDI
+        for track in midi.tracks:
+            if music_stop_flag:
+                break
                 
-                for msg in track:
-                    time_elapsed += msg.time
+            for msg in track:
+                if music_stop_flag:
+                    break
                     
-                    # Converti il tempo MIDI in secondi
-                    time_in_seconds = msg.time / midi.ticks_per_beat * 0.5  # Tempo base
+                # Converti il tempo MIDI in secondi
+                time_in_seconds = msg.time / midi.ticks_per_beat * 0.5
+                
+                if msg.type == 'note_on' and msg.velocity > 0:
+                    # Nota attiva
+                    active_notes.add(msg.note)
+                    frequency = midi_note_to_frequency(msg.note)
                     
-                    if msg.type == 'note_on' and msg.velocity > 0:
-                        # Nota attiva con velocità > 0
-                        frequency = midi_note_to_frequency(msg.note)
-                        print(f"Nota: {msg.note}, Frequenza: {frequency:.2f} Hz")
-                        # Riproduce la frequenza per un breve momento
-                        play_frequency(frequency, 0.1)
+                    # Sincronizza le luci con l'intensità della nota
+                    # Note più alte = luci più brillanti
+                    brightness = min(1.0, (msg.velocity / 127.0) * 1.5)
+                    pwm_led.value = brightness
                     
-                    elif msg.type == 'note_off' or (msg.type == 'note_on' and msg.velocity == 0):
-                        # Pausa breve tra le note
+                    # Riproduce la frequenza
+                    play_frequency(frequency, 0.1)
+                    
+                elif msg.type == 'note_off' or (msg.type == 'note_on' and msg.velocity == 0):
+                    # Nota terminata
+                    if msg.note in active_notes:
+                        active_notes.remove(msg.note)
+                    
+                    # Se non ci sono note attive, abbassa le luci
+                    if not active_notes:
+                        pwm_led.value = 0.1
+                    
+                    sleep(time_in_seconds)
+                else:
+                    # Per altri messaggi, rispetta il timing
+                    if time_in_seconds > 0:
                         sleep(time_in_seconds)
-                    
-                    else:
-                        # Per altri messaggi, rispetta il timing
-                        if time_in_seconds > 0:
-                            sleep(time_in_seconds)
-            
-            print("Riproduzione completata!")
-            
+        
+        print("Riproduzione completata!")
+        
     except Exception as e:
-        print(f"Errore durante la conversione/riproduzione: {e}")
+        print(f"Errore durante la riproduzione: {e}")
         import traceback
         traceback.print_exc()
+    finally:
+        music_playing = False
+        pwm_led.value = 0
 
 
 # Separate thread to control the LED
