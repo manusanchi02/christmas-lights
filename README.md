@@ -2,7 +2,7 @@
 
 A Raspberry Pi project to control Christmas lights via a web interface with multiple lighting modes.
 
-![Circuit Scheme](docs/scheme.png)
+![Circuit Scheme](docs/scheme_music.png)
 
 ## 📋 Description
 
@@ -69,7 +69,7 @@ The complete circuit is available in the `docs/` folder both in Fritzing format 
 
 **Important Notes:**
 - The circuit uses **GPIO 21** because it supports hardware PWM. Changing to a different pin may result in poor performance or loss of PWM functionality.
-- The **resistor value** shown in the schematic is arbitrary and must be calculated based on the actual lights you connect.
+- The **resistors value** shown in the schematic are arbitrary and must be calculated based on the actual lights and buzzer you connect.
 - The **red LED** in the diagram is just a placeholder. In the actual implementation, this should be replaced with your real Christmas lights (connected through an appropriate driver/transistor).
 
 ## 💻 Technologies Used
